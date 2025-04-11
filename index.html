@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Time Converter</title>
+    <style>
+        :root {
+            --background: rgba(255, 255, 255, 0.9);
+            --text: #2c3e50;
+            --primary: #3498db;
+            --primary-hover: #2980b9;
+            --secondary: #95a5a6;
+            --secondary-hover: #7f8c8d;
+            --glass: rgba(255, 255, 255, 0.1);
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --background: rgba(0, 0, 0, 0.9);
+                --text: #ecf0f1;
+                --glass: rgba(0, 0, 0, 0.1);
+                --shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            }
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background: var(--background);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: var(--shadow);
+            width: 100%;
+            max-width: 600px;
+            transition: transform 0.3s ease;
+        }
+
+        .container:hover {
+            transform: translateY(-5px);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .tz-select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--text);
+            border-radius: 0.5rem;
+            background: var(--glass);
+            color: var(--text);
+            font-size: 1rem;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .tz-select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.25);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            background: var(--primary);
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+        }
+
+        .btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        #reset-btn {
+            background: var(--secondary);
+        }
+
+        #reset-btn:hover {
+            background: var(--secondary-hover);
+        }
+
+        .result-container {
+            margin-top: 2rem;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+        }
+
+        .result-container.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .result-item {
+            background: var(--glass);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            position: relative;
+        }
+
+        .result-item h3 {
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+            color: var(--text);
+        }
+
+        .time-display {
+            font-size: 1.5rem;
+            margin: 0;
+            font-weight: bold;
+            font-family: monospace;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+            background: var(--primary);
+        }
+
+        .copy-btn:hover {
+            background: var(--primary-hover);
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Global Time Converter</h1>
+        <div class="form-group">
+            <label for="from-tz">From Time Zone:</label>
+            <select id="from-tz" class="tz-select" aria-label="Select source time zone"></select>
+        </div>
+        <div class="form-group">
+            <label for="to-tz">To Time Zone:</label>
+            <select id="to-tz" class="tz-select" aria-label="Select target time zone"></select>
+        </div>
+        <div class="button-group">
+            <button id="convert-btn" class="btn">Convert Time</button>
+            <button id="reset-btn" class="btn">Reset</button>
+        </div>
+        <div id="result" class="result-container" aria-live="polite"></div>
+    </div>
+
+    <script>
+        const timeZones = [
+            'Europe/London',
+            'Europe/Paris',
+            'Asia/Dhaka',
+            'Asia/Tokyo',
+            'America/New_York',
+            'America/Los_Angeles',
+            'Australia/Sydney',
+            'Africa/Cairo',
+            'Asia/Dubai',
+            'Asia/Kolkata',
+            'Pacific/Honolulu',
+            'America/Chicago',
+            'America/Denver',
+            'Asia/Singapore',
+            'Asia/Hong_Kong',
+            'Europe/Moscow',
+            'America/Sao_Paulo',
+            'Africa/Johannesburg'
+        ];
+
+        function formatTimeZone(tz) {
+            const parts = tz.split('/');
+            const region = parts[0];
+            const city = parts.slice(1).join(', ').replace(/_/g, ' ');
+            return `${city} (${region})`;
+        }
+
+        function populateTimeZones() {
+            const fromSelect = document.getElementById('from-tz');
+            const toSelect = document.getElementById('to-tz');
+
+            timeZones.forEach(tz => {
+                const option = document.createElement('option');
+                option.value = tz;
+                option.textContent = formatTimeZone(tz);
+                fromSelect.appendChild(option.cloneNode(true));
+                toSelect.appendChild(option);
+            });
+        }
+
+        function formatTime(date, timeZone) {
+            return new Intl.DateTimeFormat('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false,
+                timeZone: timeZone
+            }).format(date);
+        }
+
+        function convertTime() {
+            const fromTZ = document.getElementById('from-tz').value;
+            const toTZ = document.getElementById('to-tz').value;
+            const date = new Date();
+
+            const fromTime = formatTime(date, fromTZ);
+            const toTime = formatTime(date, toTZ);
+
+            const resultHtml = `
+                <div class="result-item">
+                    <h3>From Time (${formatTimeZone(fromTZ)})</h3>
+                    <p class="time-display">${fromTime}</p>
+                </div>
+                <div class="result-item">
+                    <h3>To Time (${formatTimeZone(toTZ)})</h3>
+                    <p class="time-display">${toTime}</p>
+                    <button class="copy-btn btn" aria-label="Copy time to clipboard">Copy</button>
+                </div>
+            `;
+
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = resultHtml;
+            resultDiv.classList.add('show');
+
+            document.querySelectorAll('.copy-btn').forEach(button => {
+                button.addEventListener('click', () => {
+                    const time = button.previousElementSibling.textContent;
+                    navigator.clipboard.writeText(time).then(() => {
+                        button.textContent = 'Copied!';
+                        setTimeout(() => button.textContent = 'Copy', 2000);
+                    });
+                });
+            });
+        }
+
+        function reset() {
+            document.getElementById('from-tz').selectedIndex = 0;
+            document.getElementById('to-tz').selectedIndex = 0;
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '';
+            resultDiv.classList.remove('show');
+        }
+
+        document.addEventListener('DOMContentLoaded', populateTimeZones);
+        document.getElementById('convert-btn').addEventListener('click', convertTime);
+        document.getElementById('reset-btn').addEventListener('click', reset);
+    </script>
+</body>
+</html>
